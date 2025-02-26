@@ -1,0 +1,60 @@
+---
+project:
+  title: "Daily-assignments"
+  output-dir: docs
+
+format:
+  html:
+    self-contained: true
+execute: 
+  echo: true
+---
+```{r}
+install.packages("dplyr")
+library(dplyr)
+install.packages("visdat")
+library(visdat)
+library(tidyr)
+install.packages("broom")
+install.packages("tidyverse")
+library(tidyverse)
+library(ggplot2)
+```
+
+```{r}
+?airquality
+vis_dat(airquality)
+```
+# Yes, these data need cleaning. 
+
+```{r}
+cleaned_airdata <- airquality %>% drop_na(Ozone) %>% drop_na(Solar.R)
+vis_dat(cleaned_airdata)
+summary(cleaned_airdata)
+```
+# Now that the data are cleaned, I'm choosing to use temperature as the predictor variable because ozone and temperature have a strong correlation. Ozone formation is highly impacted by temperature, often showing a positive correlation. 
+
+```{r}
+model <- lm(Ozone ~ Temp, data = cleaned_airdata)
+summary(model)
+```
+# After using the summary function, I think this is a valid model since the R^2 value is much greater than zero and the residual standard error is a low value. Further, the significance code shows these two variables are highly significant. 
+
+# The R squared value of 0.4833 means that the temperature explains about 50% of the ozone levels variation. This means temperature has decently good predictive ability for predicting ozone levels, but these levels are also influenced by other factors.
+
+```{r}
+a_data <- broom::augment(model, cleaned_airdata)
+head(a_data)
+```
+```{r}
+ggplot(a_data, aes(x = .fitted, y = Ozone)) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 1, color = "red") + 
+  labs(title = "Actual VS Predicted Ozone Levels",
+        subtitle = paste("Correlation:", round(cor(a_data$Ozone, 
+                                                   a_data$.fitted),2)), 
+        x = "Predicted Ozone Levels", 
+        y = "Actual Ozone Levels") +
+  theme_minimal()
+```
+# This graph shows the linear relationship between predicted and actual Ozone levels, highlighting a strong correlation of 0.7. 
