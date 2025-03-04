@@ -1,0 +1,7 @@
+project:
+  title: "Daily-assignments"
+  output-dir: docs
+
+format:
+  html:
+    self-contained: true
