@@ -1,0 +1,54 @@
+---
+title: "day-21"
+output-dir: docs
+
+format:
+  html:
+    self-contained: true
+execute: 
+  echo: true
+---
+```{r}
+library(dataRetrieval)
+library(dplyr)
+library(tsibble)
+poudre_flow <- readNWISdv(siteNumber = "06752260",    
+                          parameterCd = "00060",      
+                          startDate = "2013-01-01",   
+                          endDate = "2023-12-31") |>  
+  renameNWISColumns() |>                              
+  mutate(Date = yearmonth(Date)) |>                 
+  group_by(Date) |>                                   
+  summarise(Flow = mean(Flow))                       
+```
+
+```{r}
+poudre <- poudre_flow %>% as_tsibble()
+library(ggplot2)
+library(plotly)
+poudre_plot <- ggplot(poudre, aes(x = Date, y = Flow)) +
+  geom_line(color = "darkblue") +
+  labs(title = "Cache la Poudre River Monthly Streamflow",
+       x = "Date", y = "Mean Monthly Flow (cfs)") +
+  theme_minimal()
+ggplotly(poudre_plot)
+```
+
+```{r}
+library(feasts)
+gg_subseries(poudre, Flow) +
+  labs(title = "Subseries Plot of Monthly Streamflow in the Poudre",
+       y = "Streamflow (cfs)") +
+  theme_minimal()
+```
+## From this plot, I see that streamflow typically peaks in early summer (May-June), indicating this is likely reliant on snow melt. Low flows typically occur around December-January, which makes sense in a snowmelt stream as no snow has yet melted during winter months. In this plot, seasons are defined as months per year, and I think the subseries in this plot are the mean stream flow values for each month across all years 2013-2023.
+
+```{r}
+library(fable)
+decomp <- poudre |> 
+  model(STL(Flow ~ season(window = "periodic"))) |> 
+  components()
+autoplot(decomp)
+```
+## This plot shows how streamflow varies both within and between years. In this plot, the trend shows the long-term trends of flow across the 10 years, highlighting a overall decreasing streamflow trend. The season-year section shows consistent patterns across the years, indicating peak streamflow in summer months and low streamflow in winter months across every year. The remainder section of the graph shows the extra "noise" that cannot be explained by the trends.
+

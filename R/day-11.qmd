@@ -1,0 +1,117 @@
+---
+title: "Daily-assignments"
+output-dir: docs
+
+format:
+  html:
+    self-contained: true
+execute: 
+  echo: true
+---
+# Question 1:
+## This dataset shows 153 different recordings for ozone levels, solar radiation levels, wind speed, temperature, and month and day for each record. The summary shows various means, mins, etc for each variable.   
+```{r}
+library(visdat)
+vis_dat(airquality)
+str(airquality)
+summary(airquality)
+```
+```{r}
+shapiro.test(airquality$Ozone)
+shapiro.test(airquality$Temp)
+shapiro.test(airquality$Solar.R)
+shapiro.test(airquality$Wind)
+```
+# 3:
+## A Shapiro-Wilk test is utilized to test if a dataset follows normal distribution.
+
+# 4: 
+## The null hypothesis for a Shapiro-Wilk test is: The data are normally distributed. The alternative hypothesis for this test is: The data are not normally distributed. 
+
+# 5: 
+## If a p-value is > 0.05, we fail to reject the null and therefore conclude that the data are likely normally distributed. If the p-value is less than or equal to 0.05, we reject the null and conclude that the data are likely not normally distributed. So, according to their respective p-values, only the variable Wind is normally distributed. The variables Solar radiation, Temp, and Ozone all deviate from a normal distribution. 
+
+```{r}
+library(dplyr)
+airquality <- airquality %>% 
+  mutate(Season = case_when(
+    Month %in% c(11, 12, 1) ~ "Winter",
+    Month %in% c(2, 3, 4) ~ "Spring",
+    Month %in% c(5, 6, 7) ~ "Summer",
+    Month %in% c(8, 9, 10) ~ "Fall"
+))
+```
+# 7:
+## There are 92 observations in summer and 61 observations in fall.
+```{r}
+season_observations <- table(airquality$Season)
+print(season_observations)
+```
+
+
+```{r}
+library(tidymodels)
+library(recipes)
+recipe_obj <- recipe(~ ., data = airquality) %>%
+  step_impute_mean(all_integer()) %>%
+  step_range(all_of(c("Wind", "Solar.R", "Temp")), min = 0, max = 1)
+```
+
+# 9:
+## Data is normalized to prevent biases in a model, increase predictability, increase performance of algorithms and analyses, and ensure overall consistency. 
+
+#10:
+## The function "step_impute_mean" can be used to impute missing values with the mean value. 
+
+```{r}
+prepped_obj <- prep(recipe_obj, training = airquality)
+baked_onj <- bake(prepped_obj, new_data = airquality)
+```
+
+# 12:
+## It is neccessary to prep a dataset to first estimate which perameters will be used in the new datset based on training data. This determines the scale to be used. It is neccessary to bake a dataset because this is the step that actually applies the new parameters to the new dataset.
+
+```{r}
+model <- lm(Ozone ~ ., data = baked_onj)
+summary(model)
+```
+
+#14: 
+## The model's positive coefficient for Solar.R and Temp means that Ozone levels have a positive correlation with solar radiation and temperature: as radiation or temp increase, ozone levels will also increase. The negative coefficient for wind and month means that these two variables have a negative correlation with ozone: as wind increases or months become later in the year, the ozone levels will decrease. The adjusted R-squared value of 0.4773 means that about 48% of the ozone variability can be explained by the predictor variables. Since the p-values of solar radiation, wind, and temperature are less than 0.05, these predictor variables have a  statistically significant effect on ozone. Since all other variables have a p-value greater than 0.05, these variables do not have a statistically significant effect on ozone.   
+
+```{r}
+library(tidyverse)
+a_data <- broom::augment(model, baked_onj)
+head(a_data)
+```
+
+```{r}
+library(ggplot2)
+histo_plot <- ggplot(a_data, aes(x = .resid)) +
+  geom_histogram(fill = "red") +
+  labs(title = "Residuals Histogram") +
+  theme_minimal()
+```
+```{r}
+qq_plot <- ggplot(a_data, aes(sample = .resid)) +
+  geom_qq() +
+  geom_abline(intercept = 0, slope = 1, color = "red")
+  labs(title = "Residuals Q-Q Plot") +
+  theme_minimal()
+```
+```{r}
+library(ggpubr)
+ggarrange(qq_plot, histo_plot, ncol = 2, nrow = 1)
+```
+# 17:
+## By arranging the histogram and qq plots next to each other, I see that the residuals data are not normally distributed (as seen in the qq plot, since the plotted points do not alight with the 45 degree angle line), rather, these data are slightly right-skewed (as seen on the histogram). 
+
+```{r}
+ggscatter(a_data, x = "Ozone", y = ".fitted",
+          add = "reg.line", conf.int = TRUE,
+          cor.coef = TRUE, cor.method = "spearman",
+          ellipse = TRUE)
+```
+
+# 19:
+## After looking at the scatterplot, I think this is a relatively strong model. The R value of 0.74 indicates decently strong correlation between observed ozone levels and fitted values. The very small p-value indicates that the correlation is statistically significant, and the plotted points mainly appear along the fitted line, with minor deviation.
